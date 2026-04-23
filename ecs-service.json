@@ -1,0 +1,20 @@
+{
+  "cluster": "apex-cluster-staging",
+  "serviceName": "apex-backend-staging-service",
+  "taskDefinition": "apex-backend-staging",
+  "desiredCount": 1,
+  "launchType": "FARGATE",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": [
+        "subnet-025015deeb3133156",
+        "subnet-0a71329dfbb667c89"
+      ],
+      "securityGroups": [
+        "sg-020bd15a0872c15ec"
+      ],
+      "assignPublicIp": "ENABLED"
+    }
+  },
+  "enableECSManagedTags": true
+}

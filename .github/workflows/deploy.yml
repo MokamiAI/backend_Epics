@@ -1,0 +1,110 @@
+name: Deploy Backend to App Runner
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'backend/**'
+      - 'Dockerfile'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: apex-backend
+  SERVICE_NAME: apex-backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Start App Runner deployment
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      run: |
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        SERVICE_ARN="arn:aws:apprunner:${{ env.AWS_REGION }}:$ACCOUNT_ID:service/${{ env.SERVICE_NAME }}/$(aws apprunner list-services --region ${{ env.AWS_REGION }} --query 'ServiceSummaryList[?ServiceName==`${{ env.SERVICE_NAME }}`].ServiceId' --output text)"
+        
+        echo "Service ARN: $SERVICE_ARN"
+        
+        aws apprunner start-deployment \
+          --service-arn $SERVICE_ARN \
+          --region ${{ env.AWS_REGION }}
+
+    - name: Wait for deployment
+      env:
+        ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      run: |
+        SERVICE_ARN="arn:aws:apprunner:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:service/${{ env.SERVICE_NAME }}/$(aws apprunner list-services --region ${{ env.AWS_REGION }} --query 'ServiceSummaryList[?ServiceName==`apex-backend`].ServiceId' --output text)"
+        
+        echo "Waiting for deployment to complete..."
+        for i in {1..60}; do
+          STATUS=$(aws apprunner describe-service --service-arn $SERVICE_ARN --region ${{ env.AWS_REGION }} --query 'Service.Status' --output text)
+          echo "Status: $STATUS"
+          
+          if [ "$STATUS" = "RUNNING" ]; then
+            SERVICE_URL=$(aws apprunner describe-service --service-arn $SERVICE_ARN --region ${{ env.AWS_REGION }} --query 'Service.ServiceUrl' --output text)
+            echo "✓ Deployment successful!"
+            echo "Service URL: $SERVICE_URL"
+            break
+          fi
+          
+          if [ "$STATUS" = "CREATE_FAILED" ] || [ "$STATUS" = "UPDATE_FAILED" ]; then
+            echo "✗ Deployment failed with status: $STATUS"
+            exit 1
+          fi
+          
+          sleep 10
+        done
+
+    - name: Verify deployment
+      env:
+        ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      run: |
+        SERVICE_ARN="arn:aws:apprunner:${{ env.AWS_REGION }}:${{ secrets.AWS_ACCOUNT_ID }}:service/${{ env.SERVICE_NAME }}/$(aws apprunner list-services --region ${{ env.AWS_REGION }} --query 'ServiceSummaryList[?ServiceName==`apex-backend`].ServiceId' --output text)"
+        SERVICE_URL=$(aws apprunner describe-service --service-arn $SERVICE_ARN --region ${{ env.AWS_REGION }} --query 'Service.ServiceUrl' --output text)
+        
+        echo "Testing health endpoint: $SERVICE_URL/health"
+        curl -f $SERVICE_URL/health || exit 1
+        echo "✓ Health check passed!"
+
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "✓ Deployment completed successfully"
+        echo "Check logs at: https://console.aws.amazon.com/apprunner"
+
+    - name: Notify deployment failure
+      if: failure()
+      run: |
+        echo "✗ Deployment failed - check logs above"
+        exit 1

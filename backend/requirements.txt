@@ -1,0 +1,18 @@
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+
+# ── Database ──────────────────────────────────────────────────────────────────
+supabase==2.8.1
+
+# ── AWS S3 ────────────────────────────────────────────────────────────────────
+boto3==1.35.36
+botocore==1.35.36
+
+# ── Validation & Settings ─────────────────────────────────────────────────────
+pydantic==2.9.2
+pydantic-settings==2.6.1         # Loads .env into Settings class
+
+# ── File Uploads & Environment ────────────────────────────────────────────────
+python-multipart==0.0.12         # Required for FastAPI Form + File uploads
+python-dotenv==1.0.1             # Reads .env file

@@ -1,0 +1,22 @@
+{
+  "ServiceArn": "arn:aws:apprunner:us-east-1:381492233160:service/apex-backend/213d47c4756e411a92f48f588ad9b36d",
+  "SourceConfiguration": {
+    "ImageRepository": {
+      "ImageIdentifier": "381492233160.dkr.ecr.us-east-1.amazonaws.com/apex-backend:latest",
+      "ImageRepositoryType": "ECR",
+      "ImageConfiguration": {
+        "Port": "8000",
+        "RuntimeEnvironmentVariables": {
+          "SUPABASE_URL": "YOUR_SUPABASE_URL",
+          "SUPABASE_ANON_KEY": "YOUR_SUPABASE_ANON_KEY",
+          "AWS_ACCESS_KEY_ID": "YOUR_AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY": "YOUR_AWS_SECRET_ACCESS_KEY",
+          "AWS_REGION": "us-east-1",
+          "S3_BUCKET_NAME": "intermediate-apex-bucket-east",
+          "CORS_ORIGINS": "https://apexdevx.intermediateds.co.za,https://apex.intermediateds.co.za"
+        }
+      }
+    },
+    "AutoDeploymentsEnabled": true
+  }
+}

@@ -1,0 +1,21 @@
+﻿{
+  "family": "ids-platform-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::381492233160:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "ids-platform-backend",
+      "image": "381492233160.dkr.ecr.eu-west-2.amazonaws.com/ids-platform-backend:latest",
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "essential": true
+    }
+  ]
+}
