@@ -9,6 +9,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 venv/
+venv_new/
 .venv/
 *.db
 *.sqlite3
